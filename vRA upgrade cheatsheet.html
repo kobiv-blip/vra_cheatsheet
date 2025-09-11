@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Aria Automation 8.x – Upgrade & Ops Cheatsheet</title>
+<meta name="description" content="Concise VMware Aria Automation 8.x upgrade and operations Cheatsheet with vracli commands, logs, sizing, restart, and KB links." />
+<style>
+  /* ===== Terasky-inspired light theme (accessible) ===== */
+  :root{
+    --bg:#ffffff;
+    --text:#172033;
+    --muted:#5b6b84;
+    --panel:#f6f8fb;
+    --border:#e3e8f0;
+    --accent:#ef7c59;       /* Terasky-ish  */
+    --accent-ink:#ef7c59;
+    --ok:#0f9d58;
+    --warn:#f4a100;
+    --bad:#e02929;
+    --code-bg:#0b1220;
+    --code-fg:#e6ecff;
+    --link:#0a7bd6;
+    --link-hover:#084f8f;
+    --focus:#2dd4bf;        /* teal focus ring for a11y */
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans";}
+  a{color:var(--link);text-decoration:none}
+  a:hover{text-decoration:underline;color:var(--link-hover)}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 18px}
+  header{
+    background:linear-gradient(135deg,#eaf4ff 0%,#ffffff 50%,#eaf4ff 100%);
+    border:1px solid var(--border);border-radius:14px;padding:24px 20px;margin:12px 0 22px;
+  }
+  h1{margin:0 0 6px;font-size:28px;letter-spacing:.2px;color:var(--accent-ink)}
+  .tag{color:var(--muted);margin:0 0 8px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+  nav.toc a{background:var(--panel);border:1px solid var(--border);border-radius:999px;
+    padding:8px 12px;font-size:14px;color:var(--accent-ink)}
+  section{margin:22px 0 12px}
+  h2{font-size:22px;margin:0 0 10px;color:var(--accent-ink)}
+  h3{font-size:16px;margin:14px 0 6px;color:#22324a}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .callout{border-left:4px solid var(--accent);background:#f0f7ff;border-radius:8px;padding:10px 12px;margin:10px 0}
+  .ok{border-left-color:var(--ok);background:#eef9f2}
+  .warn{border-left-color:var(--warn);background:#fff8e9}
+  .bad{border-left-color:var(--bad);background:#fff1f1}
+
+  /* Code & copy buttons */
+  .codewrap{margin:10px 0;border:1px solid var(--border);border-radius:12px;background:var(--code-bg)}
+  .codehead{display:flex;justify-content:flex-end;align-items:center;padding:6px 8px;background:#0f1630;border-radius:12px 12px 0 0}
+  .copy{border:1px solid #2a3350;background:#141c2f;color:var(--code-fg);
+    border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer}
+  .copy:focus{outline:3px solid var(--focus);outline-offset:2px}
+  pre{margin:0;border-radius:0 0 12px 12px;background:transparent;color:var(--code-fg);
+      overflow:auto}
+  pre code{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:13.5px;display:block;padding:14px 16px}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid var(--border);padding:10px;text-align:left;vertical-align:top}
+  th{background:#f2f6fb}
+  .muted{color:var(--muted);font-size:13px}
+  .kbd{display:inline-block;border:1px solid var(--border);background:#f2f6fb;border-radius:6px;padding:2px 6px;font-family:ui-monospace}
+  .footer{margin:28px 0 12px;color:var(--muted);font-size:13px}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header aria-labelledby="title">
+  <img alt="TS Logo" style="max-width:100%;height:auto"
+          src="https://www.terasky.com/wp-content/uploads/2021/07/logo.svg">
+    <h1 id="title">Aria Automation 8.x — Upgrade & Ops Cheatsheet</h1>
+    <p class="tag">Concise commands, paths, sizing, and KB links. Optimized for maintenance windows.</p>
+    <nav class="toc" aria-label="Quick links">
+      <a href="#safety">Safety</a><a href="#paths">Logs</a><a href="#health">Health</a><a href="#bundles">Bundles</a>
+      <a href="#net">Network/NTP</a><a href="#disk">Disk</a><a href="#upgrade">In place Upgrade</a><a href="#sizing">Sizing</a>
+      <a href="#db">DB</a><a href="#ebs">EBS</a><a href="#triage">Triage</a><a href="#restart">Restart</a><a href="#lcm-root">LCM Root</a>
+      <a href="#vra-notready">NotReady</a><a href="#passwd">Passwords</a><a href="#refs">KBs</a>
+    </nav>
+  </header>
+
+  <!-- Safety -->
+  <section id="safety">
+    <h2>1) Safety (Pre-Upgrade)</h2>
+    <div class="callout ok">
+      <strong>Snapshots/Backups:</strong> Snapshot <em>Aria Suite Lifecycle</em> and <em>all vRA nodes</em>. Verify restores & free space.
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h3>Quick baseline</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="precheck">Copy</button></div>
+<pre><code id="precheck">df -h
+vracli ntp status
+vracli network dns status
+vracli status
+kubectl -n prelude get pods
+vracli log-bundle --since-days 1
+
+#vRLCM
+vrlcm-cli --health-status
+systemctl list-unit-files --type=service --all | grep enabled
+</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Recommended checks</h3>
+        <ul class="muted">
+          <li><a href="https://knowledge.broadcom.com/external/article/345946/analyzing-health-status-of-aria-automati.html">KB 345946</a> — vRA health pre-flight.</li>
+          <li><a href="https://knowledge.broadcom.com/external/article/326075/validating-vmware-aria-suite-lifecycle-8.html">KB 326075</a> — LCM health & prerequisites.</li>
+		  <li><a href="https://interopmatrix.broadcom.com/Interoperability">Interoperability</a> — Product Interoperability Matrix</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Logs -->
+  <section id="paths">
+    <h2>2) High-Value Log Paths</h2>
+    <table>
+      <thead><tr><th>Component</th><th>Path</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Bootstrap</td><td><code>/var/log/deploy.log</code></td><td>Service bring-up timeline.</td></tr>
+        <tr><td>Upgrade (node)</td><td><code>/var/log/vmware/prelude/upgrade-*.log</code></td><td>Main upgrade traces.</td></tr>
+        <tr><td>Upgrade (scripted)</td><td><code>/opt/scripts/upgrade/logs/upgrade.log</code></td><td>If in-appliance upgrader.</td></tr>
+        <tr><td>Services</td><td><code>/var/log/services-logs/</code> (<code>/services-logs/</code>)</td><td>Per-service logs (prelude).</td></tr>
+        <tr><td>Salt</td><td><code>/var/log/salt/minion</code></td><td>Config actions.</td></tr>
+        <tr><td>PostgreSQL</td><td><code>/var/log/vmware/postgresql/postgresql-*.log</code></td><td>DB issues.</td></tr>
+        <tr><td>LCM</td><td><code>/var/log/vmware/vlcm/vrlcm-server.log</code></td><td>LCM orchestration.</td></tr>
+        <tr><td>VAMI</td><td><code>/opt/vmware/var/log/vami/*.log</code> (single) / <code>/opt/log/vmware/var/log/vami/*.log</code> (cluster)</td><td>Appliance mgmt.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Health -->
+  <section id="health">
+    <h2>3) Daily Health & Quick Checks</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="health">Copy</button></div>
+<pre><code id="health">vracli status
+vracli version && vracli version patch
+vracli service status
+vracli status deploy && tail -f /var/log/deploy.log
+kubectl -n prelude get pods -o wide | grep -E 'postgres|Running|Crash'
+
+#View logs by pod name
+vracli logs postgres-0
+
+#View service logs
+vracli logs --service rabbitmq-ha
+</code></pre></div>
+  </section>
+
+  <!-- Bundles -->
+  <section id="bundles">
+    <h2>4) Log Bundles & Forwarding</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="bundles">Copy</button></div>
+<pre><code id="bundles"># Create once per HA cluster
+vracli log-bundle
+vracli log-bundle --since-days 1
+vracli log-bundle --services ebs-app,vco-app,abx-service-app
+
+# Forward to Aria Ops for Logs
+vracli vrli
+vracli vrli set https://&lt;vrli-fqdn&gt;:9543
+vracli vrli unset
+
+# External syslog
+vracli remote-syslog set --help</code></pre></div>
+  </section>
+
+  <!-- Network/NTP -->
+  <section id="net">
+    <h2>5) Network / NTP</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="netcode">Copy</button></div>
+<pre><code id="netcode"># DNS / IP / NTP
+vracli network dns status
+vracli network dns set --servers &lt;DNS1&gt;,&lt;DNS2&gt;
+vracli network ip --address &lt;IP&gt; --gateway &lt;GW&gt; --dns &lt;DNS&gt;
+vracli ntp status
+vracli network alternative-ip set --dns DNSIPaddress1,DNSIPaddress2 IPV4_addressGateway_ IPV4_address
+vracli network alternative-ip swap
+ip a
+ip route
+vracli ntp esxi
+vracli ntp systemd --set 'NTP1','NTP2'</code></pre></div>
+  </section>
+
+  <!-- Disk -->
+  <section id="disk">
+    <h2>6) Disk Management</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="diskcode">Copy</button></div>
+<pre><code id="diskcode">vracli disk-mgr stats
+vracli disk-mgr resize   # logs: /var/log/disk_resize.log</code></pre></div>
+  </section>
+
+  <!-- Upgrade -->
+  <section id="upgrade">
+    <h2>7) Upgrade: Track & Execute</h2>
+    <div class="callout warn"><strong>Drive upgrades from LCM.</strong> Use these for visibility and triage on the nodes.</div>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="upgradecode">Copy</button></div>
+<pre><code id="upgradecode"># (Offline media example)
+mount /dev/sr0 /mnt/cdrom
+
+# Prepare (stops services) → take snapshots after this point
+vracli upgrade exec --prepare --profile lcm --repo cdrom://
+
+# Execute & follow
+vracli upgrade exec
+vracli upgrade status --detail
+vracli upgrade status --follow
+kubectl -n prelude get pods</code></pre></div>
+  </section>
+
+  <!-- Sizing -->
+  <section id="sizing">
+    <h2>8) Upgrade Profile & Sizing Requirements</h2>
+
+    <h3>Official System Requirements (8.18)</h3>
+    <p class="muted">Source: <a href="https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-18/installing-vmware-aria-automation-with-easy-installer-8-18/system-requirements.html">Broadcom TechDocs — System Requirements</a></p>
+    <table>
+      <thead>
+        <tr><th>Requirements</th><th>Aria Suite Lifecycle</th><th>VMware Identity Manager</th><th colspan="2">Aria Automation</th></tr>
+        <tr><th></th><th></th><th></th><th>Medium Profile</th><th>Extra Large Profile</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Total Disk Size</td><td>78 GB</td><td>100 GB</td><td>246 GB (single-node)</td><td>246 GB (single-node)</td></tr>
+        <tr><td>Virtual CPU</td><td>2</td><td>8</td><td>12</td><td>24</td></tr>
+        <tr><td>Memory / RAM</td><td>6 GB</td><td>16 GB</td><td>54 GB</td><td>96 GB</td></tr>
+        <tr><td>Max Network Latency</td><td></td><td></td><td>5 ms between each cluster node</td><td>5 ms between each cluster node</td></tr>
+        <tr><td>Max Storage Latency</td><td></td><td></td><td>≤ 20 ms per disk I/O from any vRA node</td><td>≤ 20 ms per disk I/O from any vRA node</td></tr>
+      </tbody>
+    </table>
+    <div class="callout muted">vRA values above are for <strong>single-node</strong>. For 3-node HA, multiply the vRA resource figures by <strong>3</strong>.</div>
+  </section>
+
+  <!-- 50008 -->
+  <section id="error50008">
+    <h2>9) Fix: <code>LCMVRACONFIG50008</code> Timeouts</h2>
+    <div class="callout bad">LCM fails while vRA is still starting, or due to cipher/FIPS mismatch.</div>
+    <h3>A) vRA still starting</h3>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="errfollow">Copy</button></div>
+<pre><code id="errfollow">vracli upgrade status --follow
+kubectl -n prelude get pods   # when stable → Retry in LCM</code></pre></div>
+    <p class="muted">Refs: <a href="https://knowledge.broadcom.com/external/article/375269">KB 375269</a>, <a href="https://knowledge.broadcom.com/external/article/400681/vmware-aria-suite-lifecycle-times-out-wi.html">KB 400681</a></p>
+    <h3>B) Cipher/FIPS mismatch</h3>
+    <ul>
+      <li>Enable FIPS in LCM — <a href="https://knowledge.broadcom.com/external/article/317721">KB 317721</a></li>
+      <li>Remove weak SHA1 ciphers — <a href="#sha1">Section 11</a> / <a href="https://knowledge.broadcom.com/external/article?legacyId=95835">KB 95835</a></li>
+    </ul>
+  </section>
+
+  <!-- Cancel LCM -->
+  <section id="cancel">
+    <h2>10) Cancel Stuck LCM Requests</h2>
+    <div class="callout warn">Use LCM private API. Snapshot first.</div>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="cancelapi">Copy</button></div>
+<pre><code id="cancelapi"># LCM UI → Requests → copy Request ID
+# API (private-internal-api)
+curl -k -u 'admin@local:&lt;password&gt;' \
+  -X POST "https://&lt;lcm-fqdn&gt;/lcm/request/api/request/cancel/&lt;REQUEST_ID&gt;"</code></pre></div>
+    <p class="muted">Ref: <a href="https://knowledge.broadcom.com/external/article/322700">KB 322700</a></p>
+  </section>
+
+  <!-- SHA1 -->
+  <section id="sha1">
+    <h2>11) Remove Weak SHA1 Ciphers (Prereq)</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>LCM</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="lcms">Copy</button></div>
+<pre><code id="lcms">cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+# Example (verify per KB 95835)
+# MACs hmac-sha2-512,hmac-sha2-256
+# KexAlgorithms diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha256
+systemctl restart sshd</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>vRA node</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="vras">Copy</button></div>
+<pre><code id="vras">cp /etc/ssh/sshd_config_effective /etc/ssh/sshd_config_effective.bak || true
+# Ensure strong MACs/KEX only (per KB 95835)
+systemctl restart sshd</code></pre></div>
+      </div>
+    </div>
+    <p class="muted">Ref: <a href="https://knowledge.broadcom.com/external/article?legacyId=95835">KB 95835</a></p>
+  </section>
+
+  <!-- DB -->
+  <section id="db">
+    <h2>12) Database Tools & Split-Brain (3-node)</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>Everyday DB utilities</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="dbutil">Copy</button></div>
+<pre><code id="dbutil">vracli dev psql --list
+vracli dev psql           # then \c identity-db / \q
+vracli dev psql abx-db
+vracli db dump identity-db > identity-db.dump
+vracli db restore -d identity-db identity-db.dump</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Split-brain recovery</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="split">Copy</button></div>
+<pre><code id="split"># Pause DB on all nodes
+vracli cluster exec -- touch /data/db/live/debug
+
+# Restart followers so they wait
+kubectl delete pod -n prelude postgres-1
+kubectl delete pod -n prelude postgres-2
+
+# Remove flag on postgres-1 → sync, then postgres-2, then postgres-0
+rm /data/db/live/debug</code></pre></div>
+        <p class="muted">Ref: <a href="https://knowledge.broadcom.com/external/article/314751">KB 314751</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- EBS -->
+  <section id="ebs">
+    <h2>13) EBS Liquibase CrashLoop</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="ebscode">Copy</button></div>
+<pre><code id="ebscode">kubectl -n prelude scale deployment --replicas=0 ebs-app
+vracli reset liquibase
+kubectl -n prelude scale deployment ebs-app --replicas=3
+kubectl -n prelude get pods</code></pre></div>
+  </section>
+
+  <!-- Triage -->
+  <section id="triage">
+    <h2>14) Rapid Triage</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="triagecode">Copy</button></div>
+<pre><code id="triagecode">vracli service status | egrep -v "RUNNING|HEALTHY"
+journalctl -p 3 -xb
+kubectl -n prelude get pods | egrep -v "Running|Completed"
+grep -iE "fail|error|timeout|exception" /var/log/vmware/prelude/upgrade-*.log | tail -n 200</code></pre></div>
+  </section>
+
+  <!-- Restart (Support-approved) -->
+  <section id="restart">
+    <h2>15) Restart vRA (Support-approved Procedure)</h2>
+    <div class="callout warn">
+      For clusters: perform a rolling operation, one node at a time, unless Broadcom instructs otherwise.
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h3>START all services (bring-up)</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="startvra">Copy</button></div>
+<pre><code id="startvra">/opt/scripts/deploy.sh</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>STOP all services (graceful)</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="stopvra">Copy</button></div>
+<pre><code id="stopvra">/opt/scripts/deploy.sh --shutdown</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Verify</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="verifyvra">Copy</button></div>
+<pre><code id="verifyvra">vracli status
+tail -f /var/log/deploy.log</code></pre></div>
+      </div>
+    </div>
+    <p class="muted">Refs: Broadcom Support guidance; <a href="https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-13/starting-and-stopping-vrealize-automation.html">Start/Stop vRA 8.13</a>. For vracli reference: <a href="https://as.zabedu.ru/en/virtual2/vmware2/vrealize2/vracli-en">vracli</a>.</p>
+  </section>
+
+  <!-- 16) LCM Root Partition Increase (Reference only) -->
+  <section id="lcm-root">
+    <h2>16) LCM: Increase Root Partition (Reference)</h2>
+    <div class="callout warn">Follow the <strong>official Broadcom steps</strong> only. Snapshot first and validate maintenance approvals.</div>
+    <p class="muted">Reference: <a href="https://knowledge.broadcom.com/external/article/345979/increase-root-partition-on-vmware-aria.html">KB 345979 — Increase root partition on VMware Aria Suite Lifecycle</a></p>
+  </section>
+
+  <!-- LCM Networking -->
+  <section id="lcm-network">
+    <h2>17) Changing the IP Address in the Aria Suite Lifecycle Manager 8.x appliance</h2>
+    <div class="codewrap"><div class="codehead"><button class="copy" data-target="lcmcode">Copy</button></div>
+<pre><code id="lcmcode">/opt/vmware/share/vami/vami_config_net
+</code></pre>
+</div>
+        <p><img alt="reset root password string in context" style="max-width:100%;height:auto"
+          src="https://api-broadcomcms-software.wolkenservicedesk.com/es/attachments/get_attachment_content?uniqueFileId=1672745430292"></p>
+  </section>
+
+  <!-- 18) vRA Nodes NotReady -->
+  <section id="vra-notready">
+    <h2>18) vRA: Nodes in <code>NotReady</code> State (KB 377044)</h2>
+    <div class="callout bad">Symptom: <code>kubectl get nodes</code> shows one or more nodes as <strong>NotReady</strong>; services degrade or upgrades fail.</div>
+    <div class="cols">
+      <div class="card">
+        <h3>Diagnose</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="nrdiag">Copy</button></div>
+<pre><code id="nrdiag"># Node conditions
+kubectl get nodes -o wide
+kubectl describe node &lt;NODE_NAME&gt; | egrep -A3 'Conditions:|DiskPressure|MemoryPressure|PIDPressure|NetworkUnavailable'
+
+# Quick health
+vracli status
+vracli service status
+df -h
+vracli disk-mgr stats
+vracli ntp status
+</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Common remediations</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="nrfix">Copy</button></div>
+<pre><code id="nrfix"># DiskPressure: free space or expand
+vracli log-bundle --since-days 1   # optional support data
+vracli disk-mgr resize             # expand log/data LVs where supported
+df -h                              
+
+# Memory/PID pressure: reduce load & restart kubelet
+systemctl status kubelet
+systemctl restart kubelet
+
+# NetworkUnavailable: verify DNS/NTP and interfaces
+vracli network dns status
+vracli ntp status
+
+# After fixes, re-check
+kubectl get nodes
+</code></pre></div>
+      </div>
+    </div>
+    <p class="muted">Reference: <a href="https://knowledge.broadcom.com/external/article/377044/aria-automation-nodes-in-not-ready-state.html">KB 377044 — Aria Automation nodes in NotReady state</a></p>
+  </section>
+
+  <!-- 18) Password & Aging Settings -->
+  <section id="passwd">
+    <h2>19) Password &amp; Aging Settings (root)</h2>
+    <div class="callout warn">Adjust according to your organization’s security policy. Document any changes.</div>
+
+    <div class="cols">
+      <div class="card">
+        <h3>View current aging policy</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="chagel">Copy</button></div>
+<pre><code id="chagel">chage -l root</code></pre></div>
+      </div>
+
+      <div class="card">
+        <h3>No-expiry (example)</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="noexp">Copy</button></div>
+<pre><code id="noexp">chage -I -1 -m 0 -M 99999 -E -1 root</code></pre></div>
+        <p class="muted">Disables inactivity lockout and expiration. Use only if your policy permits.</p>
+      </div>
+
+      <div class="card">
+        <h3>Rotating policy (example)</h3>
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="rotpol">Copy</button></div>
+<pre><code id="rotpol">chage -I -1 -m 1 -M 180 -E -1 root</code></pre></div>
+        <p class="muted">Min age 1 day, max age 180 days, no inactivity or account expiry dates.</p>
+      </div>
+    </div>
+
+    <h3>chage flags (quick reference)</h3>
+    <table>
+      <thead><tr><th>Flag</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>-l</code></td><td>List current password aging settings.</td></tr>
+        <tr><td><code>-I &lt;days&gt;</code></td><td>Inactivity period after password expires before account is locked (use <code>-1</code> to disable).</td></tr>
+        <tr><td><code>-m &lt;days&gt;</code></td><td>Minimum days between password changes.</td></tr>
+        <tr><td><code>-M &lt;days&gt;</code></td><td>Maximum days the password is valid.</td></tr>
+        <tr><td><code>-E &lt;date&gt;</code></td><td>Account expiration date (<code>-1</code> disables).</td></tr>
+      </tbody>
+    </table>
+
+    <p class="muted">Reference inspiration: <a href="http://bengt.no/post/2022-06-23/">bengt.no – Password aging notes</a>. Validate settings for Photon OS/vRA against your corporate baseline.</p>
+
+    <!-- Added: Lost/forgotten root password reset via GRUB (from TechDocs source you provided) -->
+    <h3>Reset a Lost/Forgotten vRA Root Password (GRUB method)</h3>
+    <ol>
+      <li>Gracefully stop and start the cluster when needed using the supported procedure: see <a href="https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-13/starting-and-stopping-vrealize-automation.html">Starting and Stopping vRA</a>.</li>
+      <li>At the Photon OS boot screen (console), press <span class="kbd">e</span> to edit the <strong>GNU GRUB</strong> entry.</li>
+      <li>Find the line that starts with <code>linux "/" $photon_linux root=rootpartition</code> and append:
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="grubappend">Copy</button></div>
+<pre><code id="grubappend">rw init=/bin/bash</code></pre></div>
+        <div class="muted">Example (as shown in TechDocs):</div>
+        <p><img alt="reset root password string in context" style="max-width:100%;height:auto"
+          src="https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/vmware-cis/aria/aria-automation/8-18/_jcr_content/assetversioncopies/217eedbb-6223-4802-b903-ab1d579cd5b3.cq5dam.web.1280.1280.jpeg"></p>
+      </li>
+      <li>Press <span class="kbd">F10</span> to boot with the change.</li>
+      <li>When you reach the shell at <code>root [/]#</code>, set a new password:
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="passwdreset">Copy</button></div>
+<pre><code id="passwdreset">passwd</code></pre></div>
+      </li>
+      <li>Re-type the password to confirm, then reboot to complete:
+        <div class="codewrap"><div class="codehead"><button class="copy" data-target="rebootforce">Copy</button></div>
+<pre><code id="rebootforce">reboot -f</code></pre></div>
+        <p><img alt="reset root password success" style="max-width:100%;height:auto"
+          src="https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/vmware-cis/aria/aria-automation/8-18/_jcr_content/assetversioncopies/6ff62ded-02ce-42ad-813b-69162708fe69.cq5dam.web.1280.1280.jpeg"></p>
+      </li>
+    </ol>
+    <p class="muted">After reboot, sign in with the new root password. Source: Broadcom TechDocs — “How do I reset the root password for VMware Aria Automation (8.18)”.</p>
+  </section>
+
+  <!-- KBs -->
+  <section id="refs">
+    <h2>References (KB Links)</h2>
+    <ul class="muted">
+      <li><a href="https://knowledge.broadcom.com/external/article/345946/analyzing-health-status-of-aria-automati.html">KB 345946</a> — vRA health pre-flight</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/326075/validating-vmware-aria-suite-lifecycle-8.html">KB 326075</a> — LCM health & prerequisites</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/375269">KB 375269</a> & <a href="https://knowledge.broadcom.com/external/article/400681/vmware-aria-suite-lifecycle-times-out-wi.html">KB 400681</a> — LCMVRACONFIG50008</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/317721">KB 317721</a> — Enable LCM FIPS</li>
+      <li><a href="https://knowledge.broadcom.com/external/article?legacyId=95835">KB 95835</a> — Remove SHA1 ciphers</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/322700">KB 322700</a> — Cancel LCM requests</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/314751">KB 314751</a> — vRA Postgres split-brain</li>
+      <li><a href="https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-18/installing-vmware-aria-automation-with-easy-installer-8-18/system-requirements.html">8.18 System Requirements</a> — sizing table</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/321220/how-to-change-the-ip-address-in-the-aria.html">Changing the IP Address in vRLCM</a></li>
+      <li><a href="https://as.zabedu.ru/en/virtual2/vmware2/vrealize2/vracli-en">vracli quick reference</a></li>
+      <li><a href="https://knowledge.broadcom.com/external/article/345979/increase-root-partition-on-vmware-aria.html">KB 345979</a> — Increase LCM root partition</li>
+      <li><a href="https://knowledge.broadcom.com/external/article/377044/aria-automation-nodes-in-not-ready-state.html">KB 377044</a> — vRA nodes NotReady</li>
+      <li><a href="http://bengt.no/post/2022-06-23/">Password aging notes (bengt.no)</a></li>
+      <li><a href="https://kb.vmware.com/s/article/92245">KB 92245</a> — Password management in Aria Suite Lifecycle</li>
+      <li><a href="https://kb.vmware.com/s/article/92253">KB 92253</a> — Remediate passwords outside of LCM</li>
+    </ul>
+  </section>
+
+  <p class="footer">Created by <strong>Kobi Vaknin @TeraSky</strong>.</p>
+</div>
+
+<script>
+  // Copy buttons: copy text from the code block the button points to
+  document.querySelectorAll('.copy').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const id=btn.dataset.target;
+      const el=document.getElementById(id);
+      const text=el?el.innerText:'';
+      try{
+        await navigator.clipboard.writeText(text);
+        btn.textContent='Copied!';
+        setTimeout(()=>btn.textContent='Copy',1200);
+      }catch(e){
+        btn.textContent='Failed';
+        setTimeout(()=>btn.textContent='Copy',1400);
+      }
+    });
+  });
+
+  // Make every link open in a new tab (and safe)
+  document.querySelectorAll('a[href]').forEach(a=>{
+    a.setAttribute('target','_blank');
+    a.setAttribute('rel','noopener noreferrer');
+  });
+</script>
+</body>
+</html>
