@@ -327,12 +327,16 @@ systemctl restart sshd</code></pre></div>
   <!-- DB -->
   <section id="db">
     <h2>12) Database Tools & Split-Brain (3-node)</h2>
-
+					 <section id="usage">
+    <div class="callout warn">
+      <strong>Attention! Modifying data directly in the vRA database is an undesirable and very risky operation. You must clearly understand what and why you are doing. Be sure to back up the vRA or database before making any changes.</strong>
+    </div>
+  </section>
     <div class="cols">
       <div class="card">
         <h3>Everyday DB utilities</h3>
 				 <section id="usage">
-    <div class="callout warn">
+    <div class="callout ok">
       <strong>Usage:</strong> logging into internal Databases, run queries and view errors.
     </div>
   </section>
@@ -589,3 +593,4 @@ kubectl get nodes
 </script>
 </body>
 </html>
+
