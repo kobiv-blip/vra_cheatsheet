@@ -120,6 +120,11 @@ systemctl list-unit-files --type=service --all | grep enabled
   <!-- Logs -->
   <section id="paths">
     <h2>2) High-Value Log Paths</h2>
+	 <section id="usage">
+    <div class="callout ok">
+      <strong>Usage:</strong> Monitor logs for health status, upgrades and more.
+    </div>
+  </section>
     <table>
       <thead><tr><th>Component</th><th>Path</th><th>Why</th></tr></thead>
       <tbody>
@@ -138,6 +143,11 @@ systemctl list-unit-files --type=service --all | grep enabled
   <!-- Health -->
   <section id="health">
     <h2>3) Daily Health & Quick Checks</h2>
+ <section id="usage">
+    <div class="callout ok">
+      <strong>Usage:</strong> Check vRA Services, pods and logs health.
+    </div>
+  </section>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="health">Copy</button></div>
 <pre><code id="health">vracli status
 vracli version && vracli version patch
@@ -156,6 +166,11 @@ vracli logs --service rabbitmq-ha
   <!-- Bundles -->
   <section id="bundles">
     <h2>4) Log Bundles & Forwarding</h2>
+ <section id="usage">
+    <div class="callout ok">
+      <strong>Usage:</strong> Issue escalated to Broadcom Support and log bundles are requested.
+    </div>
+  </section>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="bundles">Copy</button></div>
 <pre><code id="bundles"># Create once per HA cluster
 vracli log-bundle
@@ -171,9 +186,16 @@ vracli vrli unset
 vracli remote-syslog set --help</code></pre></div>
   </section>
 
+
+
   <!-- Network/NTP -->
   <section id="net">
     <h2>5) Network / NTP</h2>
+	 <section id="usage">
+    <div class="callout ok">
+      <strong>Usage:</strong> Check Appliance network status and set new values.
+    </div>
+  </section>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="netcode">Copy</button></div>
 <pre><code id="netcode"># DNS / IP / NTP
 vracli network dns status
@@ -191,6 +213,11 @@ vracli ntp systemd --set 'NTP1','NTP2'</code></pre></div>
   <!-- Disk -->
   <section id="disk">
     <h2>6) Disk Management</h2>
+	 <section id="usage">
+    <div class="callout ok">
+      <strong>Usage:</strong> Increase storage sizing, view stats and logs.
+    </div>
+  </section>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="diskcode">Copy</button></div>
 <pre><code id="diskcode">vracli disk-mgr stats
 vracli disk-mgr resize   # logs: /var/log/disk_resize.log</code></pre></div>
@@ -199,7 +226,7 @@ vracli disk-mgr resize   # logs: /var/log/disk_resize.log</code></pre></div>
   <!-- Upgrade -->
   <section id="upgrade">
     <h2>7) Upgrade: Track & Execute</h2>
-    <div class="callout warn"><strong>Drive upgrades from LCM.</strong> Use these for visibility and triage on the nodes.</div>
+    <div class="callout warn"><strong>For In Place upgrades.</strong> </div>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="upgradecode">Copy</button></div>
 <pre><code id="upgradecode"># (Offline media example)
 mount /dev/sr0 /mnt/cdrom
@@ -217,7 +244,11 @@ kubectl -n prelude get pods</code></pre></div>
   <!-- Sizing -->
   <section id="sizing">
     <h2>8) Upgrade Profile & Sizing Requirements</h2>
-
+	 <section id="usage">
+    <div class="callout ok">
+      <strong>Usage:</strong> Upgrade Requirements table.
+    </div>
+  </section>
     <h3>Official System Requirements (8.18)</h3>
     <p class="muted">Source: <a href="https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-18/installing-vmware-aria-automation-with-easy-installer-8-18/system-requirements.html">Broadcom TechDocs — System Requirements</a></p>
     <table>
@@ -267,6 +298,11 @@ curl -k -u 'admin@local:&lt;password&gt;' \
   <!-- SHA1 -->
   <section id="sha1">
     <h2>11) Remove Weak SHA1 Ciphers (Prereq)</h2>
+	 <section id="usage">
+    <div class="callout warn">
+      <strong>Usage:</strong> Usually when upgrade from a version lower than 8.13 only if needed, see full KB.
+    </div>
+  </section>
     <div class="cols">
       <div class="card">
         <h3>LCM</h3>
@@ -291,9 +327,15 @@ systemctl restart sshd</code></pre></div>
   <!-- DB -->
   <section id="db">
     <h2>12) Database Tools & Split-Brain (3-node)</h2>
+
     <div class="cols">
       <div class="card">
         <h3>Everyday DB utilities</h3>
+				 <section id="usage">
+    <div class="callout warn">
+      <strong>Usage:</strong> logging into internal Databases, run queries and view errors.
+    </div>
+  </section>
         <div class="codewrap"><div class="codehead"><button class="copy" data-target="dbutil">Copy</button></div>
 <pre><code id="dbutil">vracli dev psql --list
 vracli dev psql           # then \c identity-db / \q
@@ -303,6 +345,11 @@ vracli db restore -d identity-db identity-db.dump</code></pre></div>
       </div>
       <div class="card">
         <h3>Split-brain recovery</h3>
+<section id="usage">
+    <div class="callout warn">
+      <strong>Usage:</strong> When encountering postgres primary/standby issues. Assists with liquibase errors. see full KB.
+    </div>
+  </section>
         <div class="codewrap"><div class="codehead"><button class="copy" data-target="split">Copy</button></div>
 <pre><code id="split"># Pause DB on all nodes
 vracli cluster exec -- touch /data/db/live/debug
@@ -321,6 +368,11 @@ rm /data/db/live/debug</code></pre></div>
   <!-- EBS -->
   <section id="ebs">
     <h2>13) EBS Liquibase CrashLoop</h2>
+<section id="usage">
+    <div class="callout warn">
+      <strong>Usage:</strong> Assists with liquibase errors. see full KB above.
+    </div>
+  </section>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="ebscode">Copy</button></div>
 <pre><code id="ebscode">kubectl -n prelude scale deployment --replicas=0 ebs-app
 vracli reset liquibase
@@ -328,19 +380,10 @@ kubectl -n prelude scale deployment ebs-app --replicas=3
 kubectl -n prelude get pods</code></pre></div>
   </section>
 
-  <!-- Triage -->
-  <section id="triage">
-    <h2>14) Rapid Triage</h2>
-    <div class="codewrap"><div class="codehead"><button class="copy" data-target="triagecode">Copy</button></div>
-<pre><code id="triagecode">vracli service status | egrep -v "RUNNING|HEALTHY"
-journalctl -p 3 -xb
-kubectl -n prelude get pods | egrep -v "Running|Completed"
-grep -iE "fail|error|timeout|exception" /var/log/vmware/prelude/upgrade-*.log | tail -n 200</code></pre></div>
-  </section>
 
   <!-- Restart (Support-approved) -->
   <section id="restart">
-    <h2>15) Restart vRA (Support-approved Procedure)</h2>
+    <h2>14) Restart vRA</h2>
     <div class="callout warn">
       For clusters: perform a rolling operation, one node at a time, unless Broadcom instructs otherwise.
     </div>
@@ -365,16 +408,16 @@ tail -f /var/log/deploy.log</code></pre></div>
     <p class="muted">Refs: Broadcom Support guidance; <a href="https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation/8-13/starting-and-stopping-vrealize-automation.html">Start/Stop vRA 8.13</a>. For vracli reference: <a href="https://as.zabedu.ru/en/virtual2/vmware2/vrealize2/vracli-en">vracli</a>.</p>
   </section>
 
-  <!-- 16) LCM Root Partition Increase (Reference only) -->
+  <!-- 15) LCM Root Partition Increase (Reference only) -->
   <section id="lcm-root">
-    <h2>16) LCM: Increase Root Partition (Reference)</h2>
+    <h2>15) LCM: Increase Root Partition (Reference)</h2>
     <div class="callout warn">Follow the <strong>official Broadcom steps</strong> only. Snapshot first and validate maintenance approvals.</div>
     <p class="muted">Reference: <a href="https://knowledge.broadcom.com/external/article/345979/increase-root-partition-on-vmware-aria.html">KB 345979 — Increase root partition on VMware Aria Suite Lifecycle</a></p>
   </section>
 
   <!-- LCM Networking -->
   <section id="lcm-network">
-    <h2>17) Changing the IP Address in the Aria Suite Lifecycle Manager 8.x appliance</h2>
+    <h2>16) Changing the IP Address in the Aria Suite Lifecycle Manager 8.x appliance</h2>
     <div class="codewrap"><div class="codehead"><button class="copy" data-target="lcmcode">Copy</button></div>
 <pre><code id="lcmcode">/opt/vmware/share/vami/vami_config_net
 </code></pre>
@@ -383,9 +426,9 @@ tail -f /var/log/deploy.log</code></pre></div>
           src="https://api-broadcomcms-software.wolkenservicedesk.com/es/attachments/get_attachment_content?uniqueFileId=1672745430292"></p>
   </section>
 
-  <!-- 18) vRA Nodes NotReady -->
+  <!-- 17) vRA Nodes NotReady -->
   <section id="vra-notready">
-    <h2>18) vRA: Nodes in <code>NotReady</code> State (KB 377044)</h2>
+    <h2>17) vRA: Nodes in <code>NotReady</code> State (KB 377044)</h2>
     <div class="callout bad">Symptom: <code>kubectl get nodes</code> shows one or more nodes as <strong>NotReady</strong>; services degrade or upgrades fail.</div>
     <div class="cols">
       <div class="card">
@@ -429,7 +472,7 @@ kubectl get nodes
 
   <!-- 18) Password & Aging Settings -->
   <section id="passwd">
-    <h2>19) Password &amp; Aging Settings (root)</h2>
+    <h2>18) Password &amp; Aging Settings (root)</h2>
     <div class="callout warn">Adjust according to your organization’s security policy. Document any changes.</div>
 
     <div class="cols">
@@ -546,4 +589,3 @@ kubectl get nodes
 </script>
 </body>
 </html>
-
